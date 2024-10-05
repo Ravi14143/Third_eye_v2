@@ -466,8 +466,8 @@ def generate(camera_index):
         yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
                bytearray(encodedImage) + b'\r\n')
 
-@app.route("/video_feed/<int:camera_index>", methods=['POST', 'GET'])
-def video_feed(camera_index):
+@app.route("/video_feed/<username>/<camera_name>/<int: camera_index>", methods=['POST', 'GET'])
+def video_feed(username,camera_name, camera_index):
     global outputFrames, locks
 
     if request.method == 'POST':
