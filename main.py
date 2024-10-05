@@ -20,7 +20,7 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 # Connect to SQLite database
 def get_db_connection():
-    conn = sqlite3.connect('cctvdb.sqlite')
+    conn = sqlite3.connect('sqlitecloud://cbff1ztjiz.sqlite.cloud:8860/cctvdb.sqlite?apikey=H9MXnqPGK8bwDT3iOczW3j9VObuLTa6dqIau1d027Tg)
     conn.row_factory = sqlite3.Row
     return conn
 
