@@ -209,7 +209,6 @@ def home():
         "staff": staff_data
     }
     
-    video_folders = get_videos_by_date()
     # Send the data to the other Flask app
    # response = requests.post('http://127.0.0.1:5000', json=payload, headers={'Content-Type':'application/json'})
     # print(payload)
@@ -218,7 +217,7 @@ def home():
     # else:
     #     logging.error("Failed to send database data.")
 
-    return render_template('home.html', user=user_details, devices=devices, logs=logs, alerts=alerts, staff=staff, num_cameras=[device["DeviceName"] for device in devices], video_folders=video_folders)
+    return render_template('home.html', user=user_details, devices=devices, logs=logs, alerts=alerts, staff=staff, num_cameras=[device["DeviceName"] for device in devices])
 
 
 @app.route('/device_add', methods=['GET', 'POST'])
@@ -437,71 +436,6 @@ def page_not_found(e):
 def internal_server_error(e):
     return f"Error loading the requested file: {e}", 500
 
-
-@app.route('/get_analysis_data')
-@login_required
-def get_analysis_data():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    # Fetch event types and count for Pie Chart
-    cursor.execute('''
-        SELECT EventType, COUNT(*) as count 
-        FROM Events 
-        GROUP BY EventType
-    ''')
-    event_type_counts = cursor.fetchall()
-
-    # Fetch events by date for Line Chart
-    cursor.execute('''
-        SELECT Date, COUNT(*) as count 
-        FROM Events 
-        GROUP BY Date
-    ''')
-    events_by_date = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    # Prepare response
-    response_data = {
-        "event_type_counts": [{"EventType": row[0], "count": row[1]} for row in event_type_counts],
-        "events_by_date": [{"Date": row[0], "count": row[1]} for row in events_by_date]
-    }
-
-    return jsonify(response_data)
-
-
-def get_videos_by_date():
-    base_directory = 'static/videos'
-    video_folders = []
-
-    if os.path.exists(base_directory):
-        # Get the list of date folders
-        for date_folder in os.listdir(base_directory):
-            date_folder_path = os.path.join(base_directory, date_folder)
-            if os.path.isdir(date_folder_path):
-                # Separate normal and detected recordings
-                normal_videos = []
-                detected_videos = []
-
-                # Check for 'normal' and 'detected' subfolders
-                normal_path = os.path.join(date_folder_path, 'normal')
-                detected_path = os.path.join(date_folder_path, 'detected')
-
-                if os.path.exists(normal_path):
-                    normal_videos = [os.path.join('videos', date_folder, 'normal', video) for video in os.listdir(normal_path)]
-                
-                if os.path.exists(detected_path):
-                    detected_videos = [os.path.join('videos', date_folder, 'detected', video) for video in os.listdir(detected_path)]
-
-                video_folders.append({
-                    "date": date_folder,
-                    "normal_videos": normal_videos,
-                    "detected_videos": detected_videos
-                })
-
-    return video_folders
 
 
 outputFrames = {}
