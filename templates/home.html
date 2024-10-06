@@ -312,17 +312,17 @@
               <tbody>
                 {% for device in devices %}
                 <tr>
-                  <td>{{ device[1] }}</td>
-                  <td>{{ device[2] }}</td>
-                  <td>{{ device[3] }}</td>
-                  <td>{{ device[4] }}</td>
+                  <td>{{ device['DeviceName'] }}</td>
+                  <td>{{ device['RoomNumber'] }}</td>
+                  <td>{{ device['IPAddress'] }}</td>
+                  <td>{{ device['ModelSelection'] }}</td>
                   <td>
-                    <a href="{{ url_for('edit_device', device_id=device.0) }}">
+                    <a href="{{ url_for('edit_device', device_id=device.id) }}">
                       <button type="button" class="edit-button">Edit</button>
                     </a>
                     </td>
                   <td>
-                    <form method="post" action="{{ url_for('delete_device', device_id=device[0]) }}">
+                    <form method="post" action="{{ url_for('delete_device', device_id=device['id']) }}">
                       <button type="submit" class="delete-button">Delete</button>
                     </form>
                   </td>
@@ -333,11 +333,83 @@
           </div>
         </div>
         <div id="analysis" class="page" style="display: none;">
-        
           <h2>Analysis</h2>
+      
+          <!-- Google Pie Chart for Event Type Breakdown -->
           <div id="googlePieChart" style="width: 600px; height: 600px;"></div>
-          <canvas id="eventLineChart" width="600px" height="600px"></canvas>
-        </div>
+      
+          <!-- Line Chart for Events Over Time -->
+          <canvas id="eventLineChart" width="600" height="400"></canvas>
+      
+          <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      
+          <script>
+              // Function to load analysis data from Flask backend
+              function loadAnalysisData() {
+                  fetch('/get_analysis_data')
+                      .then(response => response.json())
+                      .then(data => {
+                          drawPieChart(data.event_type_counts);
+                          drawLineChart(data.events_by_date);
+                      });
+              }
+      
+              // Google Charts: Draw Pie Chart
+              function drawPieChart(eventTypeCounts) {
+                  google.charts.load('current', {'packages':['corechart']});
+                  google.charts.setOnLoadCallback(() => {
+                      var data = new google.visualization.DataTable();
+                      data.addColumn('string', 'Event Type');
+                      data.addColumn('number', 'Count');
+      
+                      eventTypeCounts.forEach(event => {
+                          data.addRow([event.EventType, event.count]);
+                      });
+      
+                      var options = {
+                          title: 'Event Type Breakdown',
+                          pieHole: 0.4,
+                      };
+      
+                      var chart = new google.visualization.PieChart(document.getElementById('googlePieChart'));
+                      chart.draw(data, options);
+                  });
+              }
+      
+              // Chart.js: Draw Line Chart
+              function drawLineChart(eventsByDate) {
+                  const labels = eventsByDate.map(event => event.Date);
+                  const dataCounts = eventsByDate.map(event => event.count);
+      
+                  const ctx = document.getElementById('eventLineChart').getContext('2d');
+                  new Chart(ctx, {
+                      type: 'line',
+                      data: {
+                          labels: labels,
+                          datasets: [{
+                              label: 'Number of Events Over Time',
+                              data: dataCounts,
+                              backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                              borderColor: 'rgba(54, 162, 235, 1)',
+                              borderWidth: 1
+                          }]
+                      },
+                      options: {
+                          scales: {
+                              y: {
+                                  beginAtZero: true
+                              }
+                          }
+                      }
+                  });
+              }
+      
+              // Load analysis data when the page loads
+              window.onload = loadAnalysisData;
+          </script>
+      </div>
+      
         <div id="view" class="page" style="display: none;">
       
           <h2>Camera View</h2>
@@ -377,14 +449,14 @@
               <tbody>
                 {% for alert in alerts %}
                 <tr>
-                  <td>{{ alert[1] }}</td>
-                  <td>{{ alert[2] }}</td>
-                  <td>{{ alert[3] }}</td>
-                  <td>{{ alert[4] }}</td>
-                  <td>{{ alert[5] }}</td>
-                  <td>{{ alert[6] }}</td>
+                  <td>{{ alert['name'] }}</td>
+                  <td>{{ alert['phone_number'] }}</td>
+                  <td>{{ alert['department'] }}</td>
+                  <td>{{ alert['hospital'] }}</td>
+                  <td>{{ alert['email'] }}</td>
+                  <td>{{ alert['role'] }}</td>
                   <td>
-                    <form method="post" action="{{ url_for('delete_alerts', alerts_id=alert[0]) }}">
+                    <form method="post" action="{{ url_for('delete_alerts', alerts_id=alert['id']) }}">
                       <button type="submit" class="delete-button">Delete</button>
                     </form>
                   </td>
@@ -411,12 +483,12 @@
               <tbody>
                 {% for log in logs %}
                 <tr>
-                  <td>{{ log[1] }}</td>
-                  <td>{{ log[2] }}</td>
-                  <td>{{ log[3] }}</td>
-                  <td>{{ log[4] }}</td>
-                  <td>{{ log[5] }}</td>
-                  <td>{{ log[6] }}</td>
+                  <td>{{ log['EventType'] }}</td>
+                  <td>{{ log['alerted'] }}</td>
+                  <td>{{ log['Timestamp'] }}</td>
+                  <td>{{ log['Date'] }}</td>
+                  <td>{{ log['VideoURL'] }}</td>
+                  <td>{{ log['Image'] }}</td>
                 </tr>
                 {% endfor %}
               </tbody>
@@ -425,7 +497,46 @@
         </div>
         <div id="recordings" class="page" style="display: none;">
           <h2>Recordings</h2>
-        </div>
+      
+          {% for folder in video_folders %}
+              <div class="folder">
+                  <h3>{{ folder.date }}</h3>
+                  
+                  <!-- Normal Recordings Section -->
+                  <h4>Normal Recordings</h4>
+                  {% if folder.normal_videos %}
+                      <ul>
+                          {% for video in folder.normal_videos %}
+                              <li>
+                                  <a href="{{ url_for('static', filename=video) }}" target="_blank">
+                                      {{ video.split('/')[-1] }}
+                                  </a>
+                              </li>
+                          {% endfor %}
+                      </ul>
+                  {% else %}
+                      <p>No normal recordings available for this date.</p>
+                  {% endif %}
+      
+                  <!-- Detected Recordings Section -->
+                  <h4>Detected Recordings</h4>
+                  {% if folder.detected_videos %}
+                      <ul>
+                          {% for video in folder.detected_videos %}
+                              <li>
+                                  <a href="{{ url_for('static', filename=video) }}" target="_blank">
+                                      {{ video.split('/')[-1] }}
+                                  </a>
+                              </li>
+                          {% endfor %}
+                      </ul>
+                  {% else %}
+                      <p>No detected recordings available for this date.</p>
+                  {% endif %}
+              </div>
+          {% endfor %}
+      </div>
+      
         <div id="staff" class="page" style="display: none;">
           <div id="header">
             <div>
@@ -437,15 +548,15 @@
             {% for staff in staff %}
             <div class="card mb-3">
               
-              <img src="{{staff.7}}" alt="Staff Photo" class="card-img-top">
+              <img src="{{staff.photo}}" alt="Staff Photo" class="card-img-top">
               <div class="card-body">
-                <h3 class="card-title">{{ staff.1 }}</h3>
-                <p class="card-text">ID: {{ staff.2 }}</p>
-                <p class="card-text">Department: {{ staff.3 }}</p>
-                <p class="card-text">Hospital: {{ staff.4 }}</p>
-                <p class="card-text">Email: {{ staff.5 }}</p>
-                <p class="card-text">Phone: {{ staff.6 }}</p>
-                <form action="{{ url_for('delete_staff', staff_id=staff.2) }}" method="post" class="delete-form">
+                <h3 class="card-title">{{ staff.name }}</h3>
+                <p class="card-text">ID: {{ staff.staff_id }}</p>
+                <p class="card-text">Department: {{ staff.department }}</p>
+                <p class="card-text">Hospital: {{ staff.hospital }}</p>
+                <p class="card-text">Email: {{ staff.mail }}</p>
+                <p class="card-text">Phone: {{ staff.mobile }}</p>
+                <form action="{{ url_for('delete_staff', staff_id=staff.staff_id) }}" method="post" class="delete-form">
                   <input type="hidden" name="_method" value="DELETE">
                   <button type="submit" class="delete-button">Delete</button>
                 </form>
@@ -479,32 +590,21 @@ function showPage(pageId) {
 }
 
 function loadCameraStreams() {
-    // Get the raw data from the data attribute
-    const rawData = document.getElementById('camera-info').dataset.numCameras;
-    console.log('Raw data:', rawData);
-
-    // Convert the raw data string into a proper JavaScript array
-    const numCameras = rawData
-        .replace(/^\[|\]$/g, '')  // Remove leading and trailing brackets
-        .split(',')               // Split by commas
-        .map(item => item.trim().replace(/^'|'$/g, '')); // Trim whitespace and remove single quotes
-
+    const numCameras = JSON.parse(document.getElementById('camera-info').dataset.numCameras);
     console.log(numCameras);
 
     console.log('Loading camera streams');
    
     const cameraContainer = document.getElementById('camera-container');
     cameraContainer.innerHTML = ''; // Clear existing cameras
-
-    // Iterate over each camera ID in the numCameras array
-    numCameras.forEach((cameraId) => {
-        console.log(cameraId);
+    console.log(numCameras.length);
+    for (let i = 0; i < numCameras.length; i++) {
+        console.log(i);
         const cameraItem = document.createElement('div');
         cameraItem.className = 'grid-item';
-        // Use cameraId in the image src and label
-        cameraItem.innerHTML = `<img src='/video_feed/${cameraId}' alt='Camera ${cameraId}'><p>Camera: ${cameraId}</p>`;
+        cameraItem.innerHTML = "<img src='/video_feed/" + i + "' alt='Camera " + i + "'><p>Camera: " + i + "</p>";
         cameraContainer.appendChild(cameraItem);
-    });
+    }
 }
 
 
