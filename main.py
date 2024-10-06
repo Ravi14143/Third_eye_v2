@@ -113,6 +113,7 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 @app.route('/home')
 @login_required
 def home():
