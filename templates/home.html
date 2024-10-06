@@ -333,83 +333,11 @@
           </div>
         </div>
         <div id="analysis" class="page" style="display: none;">
+        
           <h2>Analysis</h2>
-      
-          <!-- Google Pie Chart for Event Type Breakdown -->
           <div id="googlePieChart" style="width: 600px; height: 600px;"></div>
-      
-          <!-- Line Chart for Events Over Time -->
-          <canvas id="eventLineChart" width="600" height="400"></canvas>
-      
-          <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-          <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-      
-          <script>
-              // Function to load analysis data from Flask backend
-              function loadAnalysisData() {
-                  fetch('/get_analysis_data')
-                      .then(response => response.json())
-                      .then(data => {
-                          drawPieChart(data.event_type_counts);
-                          drawLineChart(data.events_by_date);
-                      });
-              }
-      
-              // Google Charts: Draw Pie Chart
-              function drawPieChart(eventTypeCounts) {
-                  google.charts.load('current', {'packages':['corechart']});
-                  google.charts.setOnLoadCallback(() => {
-                      var data = new google.visualization.DataTable();
-                      data.addColumn('string', 'Event Type');
-                      data.addColumn('number', 'Count');
-      
-                      eventTypeCounts.forEach(event => {
-                          data.addRow([event.EventType, event.count]);
-                      });
-      
-                      var options = {
-                          title: 'Event Type Breakdown',
-                          pieHole: 0.4,
-                      };
-      
-                      var chart = new google.visualization.PieChart(document.getElementById('googlePieChart'));
-                      chart.draw(data, options);
-                  });
-              }
-      
-              // Chart.js: Draw Line Chart
-              function drawLineChart(eventsByDate) {
-                  const labels = eventsByDate.map(event => event.Date);
-                  const dataCounts = eventsByDate.map(event => event.count);
-      
-                  const ctx = document.getElementById('eventLineChart').getContext('2d');
-                  new Chart(ctx, {
-                      type: 'line',
-                      data: {
-                          labels: labels,
-                          datasets: [{
-                              label: 'Number of Events Over Time',
-                              data: dataCounts,
-                              backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                              borderColor: 'rgba(54, 162, 235, 1)',
-                              borderWidth: 1
-                          }]
-                      },
-                      options: {
-                          scales: {
-                              y: {
-                                  beginAtZero: true
-                              }
-                          }
-                      }
-                  });
-              }
-      
-              // Load analysis data when the page loads
-              window.onload = loadAnalysisData;
-          </script>
-      </div>
-      
+          <canvas id="eventLineChart" width="600px" height="600px"></canvas>
+        </div>
         <div id="view" class="page" style="display: none;">
       
           <h2>Camera View</h2>
@@ -497,46 +425,7 @@
         </div>
         <div id="recordings" class="page" style="display: none;">
           <h2>Recordings</h2>
-      
-          {% for folder in video_folders %}
-              <div class="folder">
-                  <h3>{{ folder.date }}</h3>
-                  
-                  <!-- Normal Recordings Section -->
-                  <h4>Normal Recordings</h4>
-                  {% if folder.normal_videos %}
-                      <ul>
-                          {% for video in folder.normal_videos %}
-                              <li>
-                                  <a href="{{ url_for('static', filename=video) }}" target="_blank">
-                                      {{ video.split('/')[-1] }}
-                                  </a>
-                              </li>
-                          {% endfor %}
-                      </ul>
-                  {% else %}
-                      <p>No normal recordings available for this date.</p>
-                  {% endif %}
-      
-                  <!-- Detected Recordings Section -->
-                  <h4>Detected Recordings</h4>
-                  {% if folder.detected_videos %}
-                      <ul>
-                          {% for video in folder.detected_videos %}
-                              <li>
-                                  <a href="{{ url_for('static', filename=video) }}" target="_blank">
-                                      {{ video.split('/')[-1] }}
-                                  </a>
-                              </li>
-                          {% endfor %}
-                      </ul>
-                  {% else %}
-                      <p>No detected recordings available for this date.</p>
-                  {% endif %}
-              </div>
-          {% endfor %}
-      </div>
-      
+        </div>
         <div id="staff" class="page" style="display: none;">
           <div id="header">
             <div>
