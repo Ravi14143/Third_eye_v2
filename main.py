@@ -1,14 +1,13 @@
 from flask import Flask, render_template, request, redirect, url_for, session, Response, jsonify
 import datetime
 import cv2
-import sqlite3
+import sqlitecloud
 import requests
 import os
 from functools import wraps
 import logging
 import numpy as np
 import threading
-import sqlitecloud
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -21,8 +20,9 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 # Connect to SQLite database
 def get_db_connection():
-    conn = sqlitecloud.connect('sqlitecloud://cbff1ztjiz.sqlite.cloud:8860/cctvdb.sqlite?apikey=H9MXnqPGK8bwDT3iOczW3j9VObuLTa6dqIau1d027Tg)
-    conn.row_factory = sqlite3.Row
+    conn = sqlitecloud.connect('sqlitecloud://cbff1ztjiz.sqlite.cloud:8860/cctvdb.sqlite?apikey=H9MXnqPGK8bwDT3iOczW3j9VObuLTa6dqIau1d027Tg')
+    conn.execute(f"USE DATABASE cctvdb.sqlite")
+    conn.row_factory = sqlitecloud.Row
     return conn
 
 # def save_detection_video(frame, room_name, device_number, label):
@@ -209,6 +209,7 @@ def home():
         "staff": staff_data
     }
     
+    video_folders = get_videos_by_date()
     # Send the data to the other Flask app
    # response = requests.post('http://127.0.0.1:5000', json=payload, headers={'Content-Type':'application/json'})
     # print(payload)
@@ -217,7 +218,7 @@ def home():
     # else:
     #     logging.error("Failed to send database data.")
 
-    return render_template('home.html', user=user_details, devices=devices, logs=logs, alerts=alerts, staff=staff, num_cameras=[device["DeviceName"] for device in devices])
+    return render_template('home.html', user=user_details, devices=devices, logs=logs, alerts=alerts, staff=staff, num_cameras=[device["DeviceName"] for device in devices], video_folders=video_folders)
 
 
 @app.route('/device_add', methods=['GET', 'POST'])
@@ -437,6 +438,71 @@ def internal_server_error(e):
     return f"Error loading the requested file: {e}", 500
 
 
+@app.route('/get_analysis_data')
+@login_required
+def get_analysis_data():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Fetch event types and count for Pie Chart
+    cursor.execute('''
+        SELECT EventType, COUNT(*) as count 
+        FROM Events 
+        GROUP BY EventType
+    ''')
+    event_type_counts = cursor.fetchall()
+
+    # Fetch events by date for Line Chart
+    cursor.execute('''
+        SELECT Date, COUNT(*) as count 
+        FROM Events 
+        GROUP BY Date
+    ''')
+    events_by_date = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    # Prepare response
+    response_data = {
+        "event_type_counts": [{"EventType": row[0], "count": row[1]} for row in event_type_counts],
+        "events_by_date": [{"Date": row[0], "count": row[1]} for row in events_by_date]
+    }
+
+    return jsonify(response_data)
+
+
+def get_videos_by_date():
+    base_directory = 'static/videos'
+    video_folders = []
+
+    if os.path.exists(base_directory):
+        # Get the list of date folders
+        for date_folder in os.listdir(base_directory):
+            date_folder_path = os.path.join(base_directory, date_folder)
+            if os.path.isdir(date_folder_path):
+                # Separate normal and detected recordings
+                normal_videos = []
+                detected_videos = []
+
+                # Check for 'normal' and 'detected' subfolders
+                normal_path = os.path.join(date_folder_path, 'normal')
+                detected_path = os.path.join(date_folder_path, 'detected')
+
+                if os.path.exists(normal_path):
+                    normal_videos = [os.path.join('videos', date_folder, 'normal', video) for video in os.listdir(normal_path)]
+                
+                if os.path.exists(detected_path):
+                    detected_videos = [os.path.join('videos', date_folder, 'detected', video) for video in os.listdir(detected_path)]
+
+                video_folders.append({
+                    "date": date_folder,
+                    "normal_videos": normal_videos,
+                    "detected_videos": detected_videos
+                })
+
+    return video_folders
+
 
 outputFrames = {}
 locks = {}
@@ -467,8 +533,8 @@ def generate(camera_index):
         yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' +
                bytearray(encodedImage) + b'\r\n')
 
-@app.route("/video_feed/<username>/<camera_name>/<int: camera_index>", methods=['POST', 'GET'])
-def video_feed(username,camera_name, camera_index):
+@app.route("/video_feed/<int:camera_index>", methods=['POST', 'GET'])
+def video_feed(camera_index):
     global outputFrames, locks
 
     if request.method == 'POST':
